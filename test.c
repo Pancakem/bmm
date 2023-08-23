@@ -10,13 +10,33 @@
 #define KB_5 (1024 * 5) // 5KB
 
 
-int test_fixed_sized_allocs(size_t block_size, size_t alloc_size) {
+struct test_statistics {
+  size_t num_allocs, num_deallocs;  
+  size_t num_failed;
+  size_t min_alloc_size, max_alloc_size;
+  size_t avg_alloc_size;
+  double total_alloc_time,total_dealloc_time;  
+};
+
+void print_test_statistics(struct test_statistics *ts){
+  printf("\tNumber of allocations: %25lu\n", ts->num_allocs);  
+  printf("\tAverage allocation time: %23.8f\n", (ts->total_alloc_time / (double)ts->num_allocs));
+  printf("\tNumber of de-allocations: %22lu\n", ts->num_deallocs);
+  printf("\tAverage de-allocation time: %20.8f\n", (ts->total_dealloc_time / (double)ts->num_deallocs));
+  printf("\tNumber of failed allocations: %18lu\n", ts->num_failed);
+  printf("\tMinimum allocation size: %18lu\n", ts->min_alloc_size);
+  printf("\tMaximum allocation size: %18lu\n", ts->max_alloc_size);
+  printf("\tAverage allocation size: %18lu\n", ts->avg_alloc_size);
+}
+
+int test_fixed_sized_allocs(struct test_statistics *ts, size_t block_size, size_t alloc_size) {
   clock_t begin, end;  
-  err_t err;
-  size_t num_allocs = 0, num_deallocs = 0;
-  double total_alloc_time = 0, total_dealloc_time = 0;
-  size_t num_failed = 0;
-  size_t test_size = 0; 
+  err_t err;  
+  size_t test_size = 0;
+
+
+  // fixed size test
+  ts->min_alloc_size = ts->max_alloc_size = ts->avg_alloc_size = alloc_size;
   
   err = bmm_init(block_size);
   if (err == FAILURE) {
@@ -34,10 +54,10 @@ int test_fixed_sized_allocs(size_t block_size, size_t alloc_size) {
     if (err == SUCCESS) {
       *out = 5;
       assert(*out == 5);
-      total_alloc_time += (double)(end - begin) / CLOCKS_PER_SEC;
-      num_allocs++;
+      ts->total_alloc_time += (double)(end - begin) / CLOCKS_PER_SEC;
+      ts->num_allocs++;
     }else{
-      num_failed++;
+      ts->num_failed++;
       continue;
     }
       
@@ -45,32 +65,19 @@ int test_fixed_sized_allocs(size_t block_size, size_t alloc_size) {
     err = bmm_free(out);
     end = clock();
     if (err == SUCCESS) {     
-      total_dealloc_time += (double)(end - begin) / CLOCKS_PER_SEC;
-      num_deallocs++;
+      ts->total_dealloc_time += (double)(end - begin) / CLOCKS_PER_SEC;
+      ts->num_deallocs++;
     }    
   }
 
-  bmm_deinit();
-  printf("\tNumber of allocations: %25lu\n", num_allocs);  
-  printf("\tAverage allocation time: %23.8f\n", (total_alloc_time / (double)num_allocs));
-  printf("\tNumber of de-allocations: %22lu\n", num_deallocs);
-  printf("\tAverage de-allocation time: %20.8f\n", (total_dealloc_time / (double)num_deallocs));
-  printf("\tNumber of failed allocations: %18lu\n", num_failed);
-  printf("\tMinimum allocation size: %18lu\n", alloc_size);
-  printf("\tMaximum allocation size: %18lu\n", alloc_size);
-  printf("\tAverage allocation size: %18lu\n", alloc_size);
+  bmm_deinit();  
   return 0;
 }
 
 
-int test_variable_sized_allocs(size_t block_size) {
+int test_variable_sized_allocs(struct test_statistics *ts , size_t block_size) {
   clock_t begin, end;  
-  err_t err;
-  size_t num_allocs = 0, num_deallocs = 0;
-  double total_alloc_time = 0, total_dealloc_time = 0;
-  size_t num_failed = 0;
-
-  size_t max_alloc_size = 0, min_alloc_size = 0, avg_alloc_size = 0;
+  err_t err;    
   
   err = bmm_init(block_size);
   if (err == FAILURE) {
@@ -83,62 +90,58 @@ int test_variable_sized_allocs(size_t block_size) {
   srand(time(NULL));
   size_t i;
   size_t alloc_size = rand()/((RAND_MAX + 1u)/MB_1024);
-  max_alloc_size = min_alloc_size = alloc_size;
+  ts->max_alloc_size = ts->min_alloc_size = alloc_size;
   for (i = 0; i < TESTS / 5; ++i) {    
-    char *out = NULL;
-    alloc_size = rand()/((RAND_MAX + 1u)/MB_1024);    
+    char *out = NULL;    
     begin = clock();
     err = bmm_malloc(alloc_size, (void **)&out);
     end = clock();
     if (err == SUCCESS) {      
-      avg_alloc_size += alloc_size;
-      if (alloc_size > max_alloc_size)
-        max_alloc_size = alloc_size;
-      else if (alloc_size < min_alloc_size)
-        min_alloc_size = alloc_size;
+      ts->avg_alloc_size += alloc_size;
+      if (alloc_size > ts->max_alloc_size)
+        ts->max_alloc_size = alloc_size;
+      else if (alloc_size < ts->min_alloc_size)
+        ts->min_alloc_size = alloc_size;
       *out = 5;
       assert(*out == 5);
-      total_alloc_time += (double)(end - begin) / CLOCKS_PER_SEC;      
-      pointers[num_allocs++] = out;
+      ts->total_alloc_time += (double)(end - begin) / CLOCKS_PER_SEC;      
+      pointers[ts->num_allocs++] = out;
     }else
-      num_failed++; 
+      ts->num_failed++;
+
+    alloc_size = rand()/((RAND_MAX + 1u)/MB_1024);    
   }
 
-  for(i = 0; i < num_allocs; ++i) {
+  for(i = 0; i < ts->num_allocs; ++i) {
     begin = clock();
     err = bmm_free(pointers[i]);
     end = clock();
     if (err == SUCCESS) {     
-      total_dealloc_time += (double)(end - begin) / CLOCKS_PER_SEC;
-      num_deallocs++;
+      ts->total_dealloc_time += (double)(end - begin) / CLOCKS_PER_SEC;
+      ts->num_deallocs++;
     }      
       
   }
   
-  bmm_deinit();
-  printf("\tNumber of allocations: %25lu\n", num_allocs);  
-  printf("\tAverage allocation time: %23.8f\n", (total_alloc_time / (double)num_allocs));
-  printf("\tNumber of de-allocations: %22lu\n", num_deallocs);
-  printf("\tAverage de-allocation time: %20.8f\n", (total_dealloc_time / (double)num_deallocs));
-  printf("\tNumber of failed allocations: %18lu\n", num_failed);
-  printf("\tMinimum allocation size: %18lu\n", min_alloc_size);
-  printf("\tMaximum allocation size: %18lu\n", max_alloc_size);
-  printf("\tAverage allocation size: %18lu\n", avg_alloc_size / num_allocs);
-  
+  bmm_deinit();  
   return 0;
 }
 
 int main(void) {
+  struct test_statistics ts = {0};
   printf("\nStart 2MB block with fixed 5KB allocations test\n");
-  test_fixed_sized_allocs(MB_2, KB_5);
+  test_fixed_sized_allocs(&ts, MB_2, KB_5);
+  print_test_statistics(&ts);
   printf("\nEnd 2MB block with fixed 5KB allocations test\n");
 
   printf("\nStart 1024MB block with fixed 2MB allocations test\n");
-  test_fixed_sized_allocs(MB_1024, MB_2);
+  test_fixed_sized_allocs(&ts, MB_1024, MB_2);
+  print_test_statistics(&ts);
   printf("\nEnd 1024MB block with fixed 2MB allocations test\n");
 
   printf("\nStart 1024MB block with variable sized allocations test\n");
-  test_variable_sized_allocs(MB_1024);
+  test_variable_sized_allocs(&ts, MB_1024);
+  print_test_statistics(&ts);
   printf("\nEnd 1024MB block with variable sized allocations test\n");
   return 0;
 }
