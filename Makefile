@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS= -Wall -Werror -O2
+CFLAGS= -Wall -Werror -O2 # -D DEBUG
 
 all: build
 

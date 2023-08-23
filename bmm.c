@@ -2,7 +2,19 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "bmm.h"
+
+
+
+#ifdef DEBUG
+#define LOG(fmt, args...)                            \
+        fprintf(stdout,"\n%s:%s:%d: "fmt, __FILE__, __FUNCTION__, __LINE__, args)
+
+#else
+#define LOG(fmt, args...)
+#endif
+
 
 typedef struct block{
   size_t size;
@@ -85,7 +97,7 @@ void block_coalesce(block_t *node, block_t *next_node) {
 }
 
 
-err_t _bmm_init(mpool_t **pool, size_t size) { 
+err_t _bmm_init(mpool_t **pool, size_t size) {
   if (size == 0)
     return FAILURE;
 
@@ -170,7 +182,8 @@ static mpool_t *pool = NULL;
  * Initialize memory pool with given size 
  * @param size The size of the whole memory pool
  */
-err_t bmm_init(size_t size) { 
+err_t bmm_init(size_t size) {
+  LOG("Initializing a pool of size %lu\n", size);
   return _bmm_init(&pool, size);
 }
 

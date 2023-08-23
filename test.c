@@ -129,9 +129,11 @@ int main(void) {
     return 1;
   }
 
-  test_size = 100000;
+  #define TESTS 10000
+  char *pointers[TESTS] = {0};
   srand(time(NULL));
-  for (size_t i = 0; i < test_size; ++i) {
+  size_t i;  
+  for (i = 0; i < TESTS / 5; ++i) {
     size_t alloc_size = rand()/((RAND_MAX + 1u)/MB_1024);
     char *out = NULL;
     begin = clock();
@@ -140,22 +142,23 @@ int main(void) {
     if (err == SUCCESS) {      
       *out = 5;
       total_alloc_time += (double)(end - begin) / CLOCKS_PER_SEC;
-      num_allocs++;
-    }else{
-      num_failed++;
-      continue;
-    }
-      
-    begin = clock();
-    err = bmm_free(out);
-    end = clock();
-    if (err == SUCCESS) {
-      total_dealloc_time += (double)(end - begin) / CLOCKS_PER_SEC;
-      num_deallocs++;
-    }
-     
+      // num_allocs++;
+      pointers[num_allocs++] = out;
+    }else
+      num_failed++; 
   }
 
+  for(i = 0; i < num_allocs; ++i) {
+    begin = clock();
+    err = bmm_free(pointers[i]);
+    end = clock();
+    if (err == SUCCESS) {     
+      total_dealloc_time += (double)(end - begin) / CLOCKS_PER_SEC;
+      num_deallocs++;
+    }      
+      
+  }
+  
   bmm_deinit();
   printf("\tNumber of allocations: %25lu\n", num_allocs);  
   printf("\tAverage allocation time: %23.8f\n", (total_alloc_time / (double)num_allocs));
