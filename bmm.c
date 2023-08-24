@@ -78,7 +78,7 @@ block_t *find_fit(mpool_t *pool, size_t size) {
 void block_insert(mpool_t *pool, block_t* free_node) {
   block_t *node = pool->head;
   block_t *tmp = NULL;
-  block_t *prev = NULL;
+  block_t *prev = node;
   
   while (node != NULL) {
     if (node + node->size == free_node) { // prev node
@@ -162,11 +162,11 @@ err_t _bmm_free(mpool_t *pool, void *ptr) {
   if (ptr == NULL)
     return SUCCESS;
 
-  // find header
-  LOGF("Freeing memory of size %lu", size);
+  // find header  
   hd = (mem_header_t*)ptr - OFFSET_SZ;  
   free_node = (block_t*)hd;
   free_node->size = hd->size;
+  LOGF("Freeing memory of size %lu", free_node->size);
   pool->free_mem += free_node->size;
   free_node->next = NULL;
   block_insert(pool, free_node);

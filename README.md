@@ -1,6 +1,6 @@
-# First Fit Allocator
+# Bitnine Memory Manager
 
-A simple block memory manager that uses the first fit algorithm to allocate memory to caller modules.
+A simple non-thread safe block memory manager that uses the first fit algorithm to allocate memory to caller modules.
 The allocator simply searches a list of free blocks and returns
 the first block that is big enough to hold the requested memory.
 
@@ -25,7 +25,7 @@ struct ll {
 The beauty of this is we can use the the unused memory to hold this list, so there is no
 memory overhead of maintaining this list as it uses no additional memory. The memory manager only
 keeps track of the head of the unused linked list of the chain of unused blocks.
-This simple bookkeeping algorithm requires that each unused block holds the its size.
+This simple bookkeeping algorithm requires that each unused block holds its size for use in allocation.
 
 We only add new blocks to the unused linked list during allocation. Another data structure employed
 in the memory manager is a `header`,
@@ -44,7 +44,9 @@ freeing memory to reconstruct the free block. It brings on a small overhead as w
 size of allocated memory to accomodate it.
 
 
-The implementation does not expose this memory manager
+The allocator encapsulates the allocation strategy thus the implementation does not expose this memory manager but maintains an internal global variable of the pool.
+So that the caller module needs only worry about creating a pool of its desired size and get and free
+memory.
 
 
 ## API
@@ -77,6 +79,8 @@ err_t bmm_deinit(void);
 ```
 
 ### Malloc
+The malloc implementation takes a pointer to a void pointer as an inout parameter
+that can be cast into the required type after it has been allocated.
 ```c
 /**
  * Allocates memory
