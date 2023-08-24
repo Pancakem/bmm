@@ -6,14 +6,10 @@
 /**
  * Error type
  */
-typedef enum  {
-  SUCCESS,
-  FAILURE
-}err_t;
-
+typedef enum { SUCCESS, FAILURE } err_t;
 
 /**
- * Initialize memory pool with given size 
+ * Initialize memory pool with given size
  * @param size The size of the whole memory pool
  */
 err_t bmm_init(size_t size);
