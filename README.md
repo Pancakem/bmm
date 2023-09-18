@@ -1,4 +1,4 @@
-# Bitnine Memory Manager
+# Memory Manager
 
 A simple non-thread safe block memory manager that uses the first fit algorithm to allocate memory to caller modules.
 The allocator simply searches a list of free blocks and returns
